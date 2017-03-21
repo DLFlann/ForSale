@@ -144,87 +144,36 @@ def gconnect():
         return jsonResponse("Invalid state parameter.", 401)
 
     # Store authorization code given to client from google signin
-    auth_code = request.data
+    id_token = request.data
 
     try:
-        # Upgrade the authorization code into a credentials object
-        oauth_flow = flow_from_clientsecrets("google_client_secrets.json",
-                                             scope="")
-        oauth_flow.redirect_uri = "postmessage"
-        credentials = oauth_flow.step2_exchange(auth_code)
-    except FlowExchangeError:
-        return jsonResponse("Failed to upgrade the authorization code.", 401)
+        # Verify the token signature, app token is assigned to, and exp
+        CLIENT_ID =json.loads(open('google_client_secrets.json',
+                                   'r').read())['web']['client_id']
+        idinfo = verify_id_token(id_token, CLIENT_ID)
 
-    # Check that the access token is valid
-    access_token = credentials.access_token
-    api_url = ("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s"
-                % access_token)
-    http = httplib2.Http()
-    result = json.loads(http.request(api_url, "GET")[1])
-
-    # If there was an error in the access token infor, abort
-    if result.get("error") is not None:
-        return jsonResponse(result.get("error"), 500)
-
-    # Verify that the access token is used for the intended user
-    google_id = credentials.id_token["sub"]
-    if result["user_id"] != google_id:
-        return jsonResponse("Token's user ID doesn't match fiver user ID", 401)
-
-    # Verify the access token is vallid for this app
-    CLIENT_ID =json.loads(open('google_client_secrets.json',
-                               'r').read())['web']['client_id']
-    if result["issued_to"] != CLIENT_ID:
-        return jsonResponse("Token's client ID doesn't mathch app's", 401)
-
-    # Exchange auth code for accesss token, refresh token, and ID token
-    # credentials = credentials_from_clientsecrets_and_code(
-    #     "/google_client_secrets.json",
-    #     ["https://www.googleapis.com/auth/drive.appdata", "profile", "email"],
-    #     auth_code)
-    #
-    # # Call Google API
-    # http_auth = credentials.authorize(httplib2.Http())
-    # drive_service = discovery.build("drive", "v3", http=http_auth)
-    # appfolder = drive_service.files().get(fieldId="appfolder").execute()
-
-    # # Get app id from google json file
-    # app_id = json.loads(open("google_client_secrets.json", "r").read())\
-    #     ["web"]["client_id"]
-    #
-    # # Verify ID token integrity
-    # try:
-    #     idinfo = verify_id_token(id_token, app_id)
-    #
-    #     if idinfo["iss"] not in ["accounts.google.com",
-    #                              "https://accounts.google.com"]:
-    #         raise crypt.AppIdentityError("Wrong issuer.")
-    # except crypt.AppIdentityError:
-    #     # Invalid token
-    #     return jsonResponse("Failed to verify token integrity", 401)
-
+        # Verify token issuer
+        if idinfo['iss'] not in ['accounts.google.com',
+                                 'https://accounts.google.com']:
+            raise crypt.AppIdentityError("Wrong issuer.")
+    except crypt.AppIdentityError:
+        # Token is not valid
+        return jsonResponse("Invalid sign in token.", 401)
 
     # Check to see if user is already logged in
     stored_credentials = login_session.get("credentials")
-    stored_google_id = login_session.get("goodle_id")
+    stored_google_id = login_session.get("google_id")
     if stored_credentials is not None and stored_google_id == idinfo["sub"]:
         login_session["credentials"] = idinfo
         return jsonResponse("Current user is already connected.", 200)
 
     # Store the id info in the session for later use
     login_session["provider"] = "google"
-    login_session["credentials"] = credentials.access_token
-    login_session["google_id"] = google_id
-
-    # Get user info
-    api_url = "https://www.googleapis.com/oauth2/v1/userinfo"
-    params = {"access_token": credentials.access_token, "alt": "json"}
-    answer = requests.get(api_url, params=params)
-    data = answer.json()
-
-    login_session["username"] = data["name"]
-    login_session["email"] = data["email"]
-    login_session["picture"] = data["picture"]
+    login_session["credentials"] = idinfo
+    login_session["google_id"] = idinfo["sub"]
+    login_session["username"] = idinfo["name"]
+    login_session["email"] = idinfo["email"]
+    login_session["picture"] = idinfo["picture"]
 
     # Check if user exist in database, if not create them
     user_id = getUserId(login_session["email"])

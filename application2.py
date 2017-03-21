@@ -85,8 +85,8 @@ def fbconnect():
         ["app_id"]
 
     # Get app secret from facebook json file
-    app_secret = json.loads(open("fb_client_secrets.json", "r").read())["web"] \
-        ["app_secret"]
+    app_secret = json.loads(open("fb_client_secrets.json",
+                                 "r").read())["web"]["app_secret"]
 
     # Store url for exchanging token
     api_url = "https://graph.facebook.com/oauth/access_token?" \
@@ -128,10 +128,7 @@ def fbconnect():
         login_session["user_id"] = createUser(login_session)
 
     # Print welcome message to user along with profile picture
-    output = "Welcome " + login_session["username"]
-    output += "<br><img src='%s'" % login_session["picture"]
-    output += "style='height: 300px; width: 300px;'>"
-    return output
+    return redirect(url_for("showCategories"))
 
 
 @app.route("/gconnect", methods=["POST"])
@@ -189,12 +186,13 @@ def gconnect():
     login_session["credentials"] = credentials.access_token
     login_session["google_id"] = google_id
 
-    # Get user info
+    # Get user info using google api
     api_url = "https://www.googleapis.com/oauth2/v1/userinfo"
     params = {"access_token": credentials.access_token, "alt": "json"}
     answer = requests.get(api_url, params=params)
     data = answer.json()
 
+    # Store user info returned from api in session
     login_session["username"] = data["name"]
     login_session["email"] = data["email"]
     login_session["picture"] = data["picture"]
@@ -207,10 +205,7 @@ def gconnect():
         login_session["user_id"] = createUser(login_session)
 
     # Print welcome message to user along with profile picture
-    output = "Welcome " + login_session["username"]
-    output += "<br><img src='%s'" % login_session["picture"]
-    output += "style='height: 300px; width: 300px;'>"
-    return output
+    return redirect(url_for("showCategories"))
 
 
 # @app.route("/fbdisconnect")
@@ -274,49 +269,237 @@ def gdisconnect():
         return jsonResponse("Failed to revoke token for user", 400)
 
 
+# JSON API to view category listings
+@app.route("/<string:category_name>/JSON/")
+def showItemsJSON(category_name):
+    """Show a category's items API endpoint, returns item
+    information for given category in JSON format"""
+
+    # Get category from database
+    category = session.query(Category).filter_by(name=category_name).one()
+
+    # Use category ID to get items from database
+    items = session.query(Product).filter_by(category_id=category.id).all()
+
+    # Return JSON formatted items for the give category
+    return jsonify(CategoryListings=[item.serialize for item in items])
+
+
+# JSON API to view item listing's information
+@app.route("/<string:category_name>/<int:item_id>/JSON/")
+def showItemInfoJSON(category_name, item_id):
+    """Show an item's information API endpoint, returns
+    information for a specific item in JSON format"""
+
+    # Get item from the database
+    item = session.query(Product).filter_by(id=item_id).one()
+
+    # Return JSON formatted item information
+    return jsonify(Item=item.serialize)
+
+
+# JSON API to view all categories
+@app.route("/categories/JSON/")
+def showCategoriesJSON():
+    """Show all categories API endpoint, returns
+    all categories in JSON format"""
+
+    # Get categories from database
+    categories = session.query(Category).all()
+
+    # Return JSON formatted categories
+    return jsonify(Categories=[category.serialize for category in categories])
+
+
 @app.route("/logout")
 def logout():
+    """Logout handler, determines Oauth2 provider and logs user out"""
     if "provider" in login_session:
         if login_session["provider"] == "google":
+            # If Oauth prider is Google user gdisconnect
             gdisconnect()
         if login_session["provider"] == "facebook":
+            # If Oauth prider is Facebook user gdisconnect
             fbdisconnect()
+
+        # Redirect to home page
         flash("You have successfully logged out of ForSale")
-        print("You have successfully logged out of ForSale")
         return redirect(url_for("showCategories"))
     else:
         flash("You are not logged in to ForSale")
 
 
 @app.route("/")
-@app.route("/categories")
+@app.route("/categories/")
 def showCategories():
-    return "Hello World!!"
+    """Show categories handler retrieves categories from database and renders
+    categories page, displaying categories for user to select"""
+
+    # Get categories from database
+    categories = session.query(Category).all()
+
+    # Get 4 categories for the first column and 4 for the second
+    column1 = categories[0:4]
+    column2 = categories[4:]
+
+    if "username" not in login_session:
+        # If user is not logged in, render public categories page
+        return render_template("publiccategories.html", column1=column1,
+                               column2=column2)
+    else:
+        # User is logged in, render authorized categories page
+        return render_template("categories.html", column1=column1,
+                               column2=column2,
+                               profile=login_session["picture"])
 
 
 @app.route("/<string:category_name>/")
 def showItems(category_name):
-    return category_name + " category will be shown here."
+    """Show items handler retrieves all items for a the given category from
+    the database and render the category items page, displaying all items
+     for the user"""
+
+    # Get category from database
+    category = session.query(Category).filter_by(name=category_name).one()
+
+    # Use category ID to get items from database
+    items = session.query(Product).filter_by(category_id=category.id).all()
+
+    if "username" not in login_session:
+        # If user is not logged in, render public category items page
+        return render_template("publiccategoryitems.html",
+                               category_name=category_name, items=items)
+    else:
+        # User is logged in, render authorized categories page
+        return render_template("categoryitems.html",
+                               category_name=category_name, items=items,
+                               profile=login_session["picture"])
 
 
-@app.route("/<string:category_name>/new/")
+@app.route("/<string:category_name>/new/", methods=["GET", "POST"])
 def newItem(category_name):
-    return "A new item for " + category_name + " will be created here."
+    """New item handler retireves item entry page with form to
+    post a new item to the database"""
+
+    category = session.query(Category).filter_by(name=category_name).one()
+
+    #Verify user is logged in
+    if "username" not in login_session:
+        # User is not logged in, redirect to login page
+        redirect(url_for("login"))
+    elif request.method == "POST":
+        # Handle post request
+        newItem = Product(name=request.form["name"],
+                            description=request.form["description"],
+                            price=request.form["price"],
+                            email=login_session["email"],
+                            phone=request.form["phone"],
+                            category_id=category.id,
+                            user_id=login_session["user_id"])
+        session.add(newItem)
+        session.commit()
+        flash('New %s Item Successfully Posted For Sale' % newItem.name)
+        return redirect(url_for("showItemInfo", category_name=category_name,
+                                item_id=newItem.id))
+    else:
+        # User is logged in, render new item template
+        return render_template("newitem.html", category_name=category_name,
+                               profile=login_session["picture"])
 
 
 @app.route("/<string:category_name>/<int:item_id>/")
 def showItemInfo(category_name, item_id):
-    return "Information for " + str(item_id) + " in " + category_name + " will be shown here."
+    """Item description page handler, retrieves an item from the database
+    and renders the item information page"""
+    # Get item from the database
+    item = session.query(Product).filter_by(id=item_id).one()
+
+    if "username" not in login_session:
+        # If user is not logged in, render public item info page
+        return render_template("publiciteminfo.html",
+                               category_name=category_name, item=item)
+    elif item.user.email != login_session["email"]:
+        # User is not the creator, render page without edit/delete options
+        return render_template("iteminfo.html",
+                               category_name=category_name, item=item,
+                               profile=login_session["picture"])
+    else:
+        # User is the owner, render authorized item info page
+        return render_template("owneriteminfo.html",
+                               category_name=category_name, item=item,
+                               profile=login_session["picture"])
 
 
-@app.route("/<string:category_name>/<int:item_id>/edit/")
+@app.route("/<string:category_name>/<int:item_id>/edit/", methods=["GET",
+                                                                  "POST"])
 def editItem(category_name, item_id):
-    return "Edit page for " + str(item_id) + " in " + category_name + " will be shown here."
+    """Item edit page handler, retrieves item from database
+    and renders the edit item page"""
+
+    # Get item from the database
+    item = session.query(Product).filter_by(id=item_id).one()
+
+    if "username" not in login_session:
+        # If user not logged in, redirect to login page
+        return redirect("/login")
+    elif item.user.email != login_session["email"]:
+        # If user not the creator, javascript alert they are not authorized
+        return "<script>function myFunction() {alert('Only the seller may " \
+               "edit this item.');};</script><body onload='myFunction()''>"
+    elif request.method == "POST":
+        # Handle post request, retrieve user info
+        if request.form["name"]:
+            item.name = request.form["name"]
+        if request.form["description"]:
+            item.description = request.form["description"]
+        if request.form["price"]:
+            item.price = request.form["price"]
+        if request.form["phone"]:
+            item.phone = request.form["phone"]
+
+        # Update database
+        session.add(item)
+        session.commit()
+
+        # Redirect to the items info page
+        flash('%s Successfully Updated' % item.name)
+        return redirect(url_for("showItemInfo", category_name=category_name,
+                                item_id=item.id))
+    else:
+        # Render edit item template
+        return render_template("edititem.html", category_name=category_name,
+                               item=item, profile=login_session["picture"])
 
 
-@app.route("/<string:category_name>/<int:item_id>/delete/")
+@app.route("/<string:category_name>/<int:item_id>/delete/", methods=["GET",
+                                                                     "POST"])
 def deleteItem(category_name, item_id):
-    return "Delete confirmation page for " + str(item_id) + " in " + category_name + " will be shown here."
+    """Delete item page handler, retrieves item from database
+    and render delete confirmation page"""
+
+    # Get item from the database
+    item = session.query(Product).filter_by(id=item_id).one()
+
+    if "username" not in login_session:
+        # If user not logged in, redirect to login page
+        return redirect("/login")
+    elif item.user.email != login_session["email"]:
+        # If user not the creator, javascript alert they are not authorized
+        return "<script>function myFunction() {alert('Only the seller may " \
+               "remove this item.');};</script><body onload='myFunction()''>"
+    elif request.method == "POST":
+        # Handle post request, deteling item from database
+        session.delete(item)
+        session.commit()
+
+        # Redirect to the category page
+        flash('Item Successfully Deleted')
+        return redirect(url_for('showItems', category_name=category_name))
+    else:
+        # Render delete confirmation page
+        return render_template("deleteitem.html",
+                               category_name=category_name, item=item,
+                               profile=login_session["picture"])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,17 @@
+{% extends "basetrust.html" %}
+
+{% block content %}
+    <div class="row">
+        <section class="col-md-12 text-center">
+            <h2 class="new-item-heading">Are you sure you want to remove {{item.name}}</h2>
+        </section>
+    </div>
+    <div class="row">
+        <main class="col-md-12 text-center">
+            <form class="form-horizontal" method="post">
+                <a href="{{url_for('showItemInfo', category_name=category_name, item_id=item.id)}}"><button class="btn btn-default" type="button">Cancel</button></a>
+                <button type="submit" class="btn btn-default" type="submit">Delete</button>
+            </form>
+        </main>
+    </div>
+{% endblock %}

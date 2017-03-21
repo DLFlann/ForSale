@@ -1,0 +1,95 @@
+/*---------- General ----------*/
+body {
+    background: #fffeef;
+}
+
+.profile-pic {
+    width: 50px;
+    height: 50px;
+}
+
+.pic-logout,
+.login-btn {
+    position: absolute;
+    right: 15px;
+    margin-top: 20px;
+}
+
+.title {
+    font-size: 65px;
+}
+
+/*---------- Login Page ----------*/
+
+/* Header */
+.header {
+    margin-bottom: 114px;
+    border-bottom: 1px solid;
+    box-shadow: 0 5px 1px rgba(211, 211, 211, 0.37);
+}
+
+/* Content */
+.signin-container {
+    border: 1px solid black;
+    border-radius: 10px;
+    max-width: 60%;
+    margin: auto;
+}
+
+.signin-btn {
+    margin: 15px 0;
+}
+
+/*---------- Categories Page ----------*/
+
+/* Content */
+ul  {
+    list-style-type: none;
+    font-size: 30px;
+}
+
+li {
+    margin-bottom: 25px;
+}
+
+/*---------- Items Page ----------*/
+
+/* Header */
+.category-heading {
+    font-size: 50px;
+}
+
+/* Content */
+.item-listing {
+    padding-top: 40px;
+    padding-left: 15%;
+}
+
+/*---------- Item Info Page ----------*/
+
+/* Header */
+
+.info-back {
+    float: left;
+}
+
+/* General */
+.info-pane {
+    max-width: 960px;
+    margin: auto;
+}
+
+/* Content */
+.seller-phone-email {
+    display: flex;
+}
+
+.item-email,
+.item-phone {
+    margin: 7px;
+}
+
+.item-phone {
+    position: absolute;
+    right: 0;
+}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-12 text-center">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul>
+                    {% for message in messages %}
+                        <li> <strong> {{ message }} </strong> </li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+        </div>
+        <section class="col-md-12 text-center"><h1 class="category-heading">{{category_name}}</h1></section>
+        <main class="col-md-12">
+            <ul class="item-listing">
+                {% for item in items %}
+                    <li><a href="{{url_for('showItemInfo', category_name=category_name, item_id=item.id)}}">{{item.name}} - ${{item.price}}</a></li>
+                {% endfor %}
+            </ul>
+        </main>
+    </div>
+{% endblock %}

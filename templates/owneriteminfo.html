@@ -1,0 +1,35 @@
+{% extends "basetrust.html" %}
+
+{% block content %}
+    <div class="row info-pane">
+            <div class="col-md-12 text-center">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <ul>
+                        {% for message in messages %}
+                            <li> <strong> {{ message }} </strong> </li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+            </div>
+            <section class="col-md-12 text-center">
+                <a class="info-back" href="{{url_for('showItems', category_name=category_name)}}"><button>Back to Listings</button></a>
+                <h2 class="item-info-heading">{{item.name}}</h2>
+            </section>
+            <section class="col-md-12">
+                <h3 class="item-price"><b>${{item.price}}</b></h3>
+            </section>
+            <main class="col-md-12 text-center">
+                <p>{{item.description}}</p>
+            </main>
+            <section class="col-md-12 seller-phone-email">
+                <span class="item-email"><h4>{{item.email}}</h4></span>
+                <span class="item-phone"><h4>{{item.phone}}</h4></span>
+            </section>
+            <section class="col-md-12 text-right">
+                <a href="{{url_for('editItem', category_name=category_name, item_id=item.id)}}"><button>Edit</button></a>
+                <a href="{{url_for('deleteItem', category_name=category_name, item_id=item.id)}}"><button>Delete</button></a>
+            </section>
+    </div>
+{% endblock %}
