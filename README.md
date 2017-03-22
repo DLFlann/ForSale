@@ -2,7 +2,7 @@
 ForSale is online market place designed to make it easy to connect sellers with buyers by using their pre-existing Facebook and Google accounts.  Sellers can post what they have for sale by sigining with either their Google or Facebook account, and potential buyers can browse listings either logged in or not.
 
 ## Dependancies
-Running ForSale the following dependancies
+Running ForSale requires the following dependancies
 - Python 2.7 [download here](https://www.python.org/downloads/)
 - Flask Python Framework [download here](https://pypi.python.org/pypi/Flask/0.12)
 - SQL Alchemy Python ORM [download here](https://www.sqlalchemy.org/download.html)
