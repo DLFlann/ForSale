@@ -60,6 +60,6 @@ class Product(Base):
         }
 
 
-engine = create_engine("sqlite:///forsale.db")
+engine = create_engine("sqlite:///forsale2.db")
 
 Base.metadata.create_all(engine)
