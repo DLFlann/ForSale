@@ -1,5 +1,5 @@
 # ForSale
-ForSale is online market place designed to make it easy to connect sellers with buyers by using their pre-existing Facebook and Google accounts.  Sellers can post what they have for sale by sigining with either their Google or Facebook account, and potential buyers can browse listings either logged in or not.
+ForSale is a content management system in the form of a Craigslist clone application utilizing the python framework Flask for template rendering, URL mapping, and providing user feedback in the form of flash notifications. User authentication is supplied via OAuth2 providers by employing Google and Facebook's Graph API. And data is stored in a PostgreSQL database using the python object relation mapper SQLAlchemy. Additionally, RESTful API services are implemented with the use of serialization methods on database classes and API endpoints returning JSON formatted data.
 
 ## Dependancies
 Running ForSale requires the following dependancies
